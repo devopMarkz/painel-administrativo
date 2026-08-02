@@ -1,0 +1,6 @@
+<script setup lang="ts">
+import { ref } from 'vue'; import { useRouter } from 'vue-router'; import { useAuthStore } from '../stores/auth'; import { errorMessage } from '../api/client'
+const email = ref(''); const senha = ref(''); const loading = ref(false); const error = ref(''); const auth = useAuthStore(); const router = useRouter()
+async function submit() { error.value = ''; loading.value = true; try { await auth.signIn(email.value, senha.value); router.push('/documentos') } catch (e) { error.value = e instanceof Error ? e.message : errorMessage(e) } finally { loading.value = false } }
+</script>
+<template><section class="login-page"><form class="card login-card" @submit.prevent="submit"><p class="eyebrow">Sistema de compartilhamento</p><h1>Área administrativa</h1><p class="muted">Entre para gerenciar demonstrativos e links.</p><p v-if="error" class="alert error">{{ error }}</p><label>E-mail<input v-model.trim="email" type="email" autocomplete="email" required /></label><label>Senha<input v-model="senha" type="password" autocomplete="current-password" required /></label><button :disabled="loading" class="primary">{{ loading ? 'Entrando...' : 'Entrar' }}</button></form></section></template>

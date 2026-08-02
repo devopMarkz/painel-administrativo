@@ -1,0 +1,5 @@
+<script setup lang="ts">
+import { onMounted, ref } from 'vue'; import { usuariosApi } from '../api/resources'; import { errorMessage } from '../api/client'; import type { Usuario } from '../types'
+const users = ref<Usuario[]>([]); const error = ref(''); onMounted(async () => { try { users.value = (await usuariosApi.listar()).data } catch (e) { error.value = errorMessage(e) } })
+</script>
+<template><section class="page"><header class="page-header"><div><p class="eyebrow">Administração</p><h1>Usuários</h1></div><RouterLink class="primary button" to="/usuarios/novo">Novo usuário</RouterLink></header><p v-if="error" class="alert error">{{ error }}</p><div class="card table-wrap"><table><thead><tr><th>Nome</th><th>E-mail</th><th>Perfil</th><th>Status</th></tr></thead><tbody><tr v-for="user in users" :key="user.id"><td>{{ user.nome }}</td><td>{{ user.email }}</td><td><span class="badge">{{ user.perfil }}</span></td><td>{{ user.ativo ? 'Ativo' : 'Inativo' }}</td></tr></tbody></table></div></section></template>

@@ -1,0 +1,1 @@
+<template><section class="page narrow"><div class="card"><p class="eyebrow">403</p><h1>Acesso não autorizado</h1><p class="muted">Seu perfil não possui permissão para acessar este recurso.</p><RouterLink class="primary button" to="/documentos">Voltar aos documentos</RouterLink></div></section></template>
