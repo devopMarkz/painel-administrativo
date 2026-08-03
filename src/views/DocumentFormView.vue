@@ -37,7 +37,6 @@ async function submit() { if (!arquivo.value || !auth.usuario) return error.valu
       <aside class="template-info" aria-labelledby="templates-title">
         <div>
           <p class="template-eyebrow">Modelos disponíveis</p>
-          <h2 id="templates-title">Use o template correspondente ao imposto</h2>
           <p>Baixe o modelo antes de preencher a planilha. Isso garante que os repasses, municípios, categorias e totais sejam interpretados corretamente.</p>
         </div>
         <div class="template-actions">
