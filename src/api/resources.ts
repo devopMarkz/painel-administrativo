@@ -9,6 +9,7 @@ export const documentosApi = {
   buscar: (id: number) => api.get<Documento>(`/documentos/${id}`),
   criar: (data: FormData) => api.post<Documento>('/documentos', data),
   excluir: (id: number) => api.delete(`/documentos/${id}`),
+  baixar: (id: number) => api.get(`/documentos/${id}/download`, { responseType: 'blob' }),
   links: (id: number) => api.get<Link[]>(`/documentos/${id}/links`),
   criarLink: (id: number, data: { exigeSenha: boolean; senha?: string | null; expiresAt?: string | null }) => api.post<Link>(`/documentos/${id}/links`, data),
 }
