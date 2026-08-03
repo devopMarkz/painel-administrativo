@@ -1,10 +1,21 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'; import { useRoute } from 'vue-router'; import { documentosApi, linksApi } from '../api/resources'; import { errorMessage } from '../api/client'; import type { Documento, Link } from '../types'
-const route = useRoute(); const id = Number(route.params.id); const doc = ref<Documento | null>(null); const links = ref<Link[]>([]); const error = ref(''); const copied = ref('')
+const route = useRoute(); const id = Number(route.params.id); const doc = ref<Documento | null>(null); const links = ref<Link[]>([]); const error = ref(''); const copied = ref(''); const linkParaExcluir = ref<Link | null>(null); const excluindo = ref(false)
 const format = (v: string | null) => v ? new Date(v).toLocaleString('pt-BR') : 'Sem expiração'
 async function load() { try { [doc.value, links.value] = await Promise.all([documentosApi.buscar(id).then(x => x.data), documentosApi.links(id).then(x => x.data)]) } catch (e) { error.value = errorMessage(e) } }
 async function copy(link: Link) { await navigator.clipboard.writeText(link.urlCompleta); copied.value = String(link.id); setTimeout(() => copied.value = '', 1500) }
 async function toggle(link: Link) { try { await (link.revogado ? linksApi.reativar(link.id) : linksApi.revogar(link.id)); await load() } catch (e) { error.value = errorMessage(e) } }
+function solicitarExclusao(link: Link) { linkParaExcluir.value = link }
+async function confirmarExclusao() {
+  const link = linkParaExcluir.value
+  if (!link) return
+  excluindo.value = true
+  try {
+    await linksApi.excluir(link.id)
+    linkParaExcluir.value = null
+    await load()
+  } catch (e) { error.value = errorMessage(e) } finally { excluindo.value = false }
+}
 onMounted(load)
 </script>
 
@@ -63,6 +74,7 @@ onMounted(load)
               <button @click="copy(link)">{{ copied === String(link.id) ? 'Copiado!' : 'Copiar' }}</button>
               <RouterLink :to="`/links/${link.id}/editar`">Editar</RouterLink>
               <button @click="toggle(link)">{{ link.revogado ? 'Reativar' : 'Revogar' }}</button>
+              <button class="danger-text" @click="solicitarExclusao(link)">Excluir</button>
             </td>
           </tr>
           <tr v-if="!links.length">
@@ -71,7 +83,20 @@ onMounted(load)
         </tbody>
       </table>
     </div>
-  </section>
+  
+    <Teleport to="body">
+      <div v-if="linkParaExcluir" class="modal-backdrop" @click.self="linkParaExcluir = null">
+        <section class="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="confirm-delete-link-title">
+          <p class="eyebrow">Confirmação necessária</p>
+          <h2 id="confirm-delete-link-title">Excluir link?</h2>
+          <p>Este link de compartilhamento será removido permanentemente e não poderá mais ser acessado.</p>
+          <div class="modal-actions">
+            <button type="button" class="cancel-button" :disabled="excluindo" @click="linkParaExcluir = null">Cancelar</button>
+            <button type="button" class="delete-button" :disabled="excluindo" @click="confirmarExclusao">{{ excluindo ? 'Excluindo...' : 'Excluir link' }}</button>
+          </div>
+        </section>
+      </div>
+    </Teleport>  </section>
 </template>
 
 <style scoped>
@@ -211,4 +236,15 @@ tbody tr:hover { background: #f8fafc; }
   padding: 10px 12px;
   font-size: .85rem;
 }
+
+.danger-text { color: #b91c1c !important; }
+.modal-backdrop { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; padding: 20px; background: rgba(15, 23, 42, .42); }
+.confirm-modal { width: min(100%, 440px); padding: 24px; border: 1px solid #e2e8f0; border-top: 3px solid #b91c1c; border-radius: 4px; background: #fff; box-shadow: 0 20px 44px rgba(15, 23, 42, .24); }
+.confirm-modal h2 { margin: 4px 0 10px; color: #0f172a; font-size: 1.25rem; }
+.confirm-modal p:not(.eyebrow) { margin: 0; color: #475569; font-size: .9rem; line-height: 1.55; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; }
+.cancel-button, .delete-button { border-radius: 4px; padding: 9px 14px; font: inherit; font-weight: 600; cursor: pointer; }
+.cancel-button { border: 1px solid #cbd5e1; background: #fff; color: #334155; }
+.delete-button { border: 1px solid #b91c1c; background: #b91c1c; color: #fff !important; }
+.cancel-button:disabled, .delete-button:disabled { opacity: .6; cursor: wait; }
 </style>

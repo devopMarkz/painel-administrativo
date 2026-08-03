@@ -10,14 +10,13 @@ async function submit() { error.value = ''; loading.value = true; try { await au
       <div class="brand-mark">SF</div>
       <div>
         <p class="brand-name">Portal Fiscal</p>
-        <p class="brand-sub">Gestão e compartilhamento de demonstrativos tributários</p>
+        <p class="brand-sub">Gestão e compartilhamento de repasse municipal</p>
       </div>
     </div>
 
     <form class="card login-card" @submit.prevent="submit">
       <p class="eyebrow">Sistema de compartilhamento</p>
       <h1>Área administrativa</h1>
-      <p class="muted">Entre para gerenciar demonstrativos e links.</p>
 
       <p v-if="error" class="alert error">{{ error }}</p>
 
@@ -38,9 +37,11 @@ async function submit() { error.value = ''; loading.value = true; try { await au
 <style scoped>
 .login-page {
   min-height: 100vh;
-  display: grid;
-  place-items: center;
-  gap: 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
   padding: 48px 20px;
   background:
     radial-gradient(1100px 520px at 12% -10%, rgba(30, 64, 128, 0.10), transparent 60%),

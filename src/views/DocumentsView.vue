@@ -1,9 +1,32 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'; import { useRouter } from 'vue-router'; import { documentosApi } from '../api/resources'; import { errorMessage } from '../api/client'; import type { Documento, Page } from '../types'
-const router = useRouter(); const page = ref<Page<Documento> | null>(null); const municipio = ref(''); const periodo = ref(''); const loading = ref(false); const baixandoId = ref<number | null>(null); const error = ref('')
+const router = useRouter(); const page = ref<Page<Documento> | null>(null); const municipio = ref(''); const periodo = ref(''); const loading = ref(false); const baixandoId = ref<number | null>(null); const documentoParaExcluir = ref<Documento | null>(null); const excluindo = ref(false); const error = ref('')
 const date = (v: string) => new Date(v).toLocaleString('pt-BR')
-async function load(index = 0) { loading.value = true; error.value = ''; try { page.value = (await documentosApi.listar({ municipio: municipio.value || undefined, periodo: periodo.value || undefined, page: index, size: 20 })).data } catch (e) { error.value = errorMessage(e) } finally { loading.value = false } }
-async function remove(id: number) { if (!confirm('Excluir este documento e seu arquivo? Esta ação não pode ser desfeita.')) return; try { await documentosApi.excluir(id); await load(page.value?.number || 0) } catch (e) { error.value = errorMessage(e) } }
+const periodoValido = (valor: string) => /^(0[1-9]|1[0-2])-\d{4}$/.test(valor)
+function mascararPeriodo(event: Event) {
+  const input = event.target as HTMLInputElement
+  let digitos = input.value.replace(/\D/g, '').slice(0, 6)
+  if (digitos.length >= 2 && (Number(digitos.slice(0, 2)) < 1 || Number(digitos.slice(0, 2)) > 12)) digitos = digitos.slice(0, 1)
+  const formatado = digitos.length > 2 ? `${digitos.slice(0, 2)}-${digitos.slice(2)}` : digitos
+  input.value = formatado
+  periodo.value = formatado
+}
+function bloquearCaracteresInvalidos(event: KeyboardEvent) {
+  if (event.ctrlKey || event.metaKey || ['Backspace', 'Delete', 'Tab', 'ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return
+  if (!/^\d$/.test(event.key)) event.preventDefault()
+}
+async function load(index = 0) { if (periodo.value && !periodoValido(periodo.value)) { error.value = 'Informe o período no formato MM-AAAA, com mês entre 01 e 12.'; return }; loading.value = true; error.value = ''; try { page.value = (await documentosApi.listar({ municipio: municipio.value || undefined, periodo: periodo.value || undefined, page: index, size: 20 })).data } catch (e) { error.value = errorMessage(e) } finally { loading.value = false } }
+function solicitarExclusao(doc: Documento) { documentoParaExcluir.value = doc }
+async function confirmarExclusao() {
+  const doc = documentoParaExcluir.value
+  if (!doc) return
+  excluindo.value = true
+  try {
+    await documentosApi.excluir(doc.id)
+    documentoParaExcluir.value = null
+    await load(page.value?.number || 0)
+  } catch (e) { error.value = errorMessage(e) } finally { excluindo.value = false }
+}
 async function baixar(doc: Documento) {
   baixandoId.value = doc.id
   try {
@@ -37,7 +60,7 @@ onMounted(load)
       </label>
       <label class="field">
         <span>Período</span>
-        <input v-model="periodo" placeholder="MM-AAAA" />
+        <input :value="periodo" inputmode="numeric" maxlength="7" placeholder="MM-AAAA" @keydown="bloquearCaracteresInvalidos" @input="mascararPeriodo" />
       </label>
       <button class="secondary">Filtrar</button>
     </form>
@@ -67,9 +90,9 @@ onMounted(load)
             <td class="num">{{ doc.quantidadeLinks }}</td>
             <td class="dim">{{ date(doc.dataUpload) }}</td>
             <td class="actions">
+              <RouterLink :to="`/documentos/${doc.id}`">Links</RouterLink>
               <button class="link-button" :disabled="baixandoId === doc.id" @click="baixar(doc)">{{ baixandoId === doc.id ? 'Baixando...' : 'Baixar' }}</button>
-              <RouterLink :to="`/documentos/${doc.id}`">Abrir</RouterLink>
-              <button class="danger-text" @click="remove(doc.id)">Excluir</button>
+              <button class="danger-text" @click="solicitarExclusao(doc)">Excluir</button>
             </td>
           </tr>
           <tr v-if="!page?.content.length">
@@ -84,7 +107,20 @@ onMounted(load)
       <span>Página {{ page.number + 1 }} de {{ page.totalPages || 1 }}</span>
       <button :disabled="page.last" @click="load(page.number + 1)">Próxima</button>
     </footer>
-  </section>
+  
+    <Teleport to="body">
+      <div v-if="documentoParaExcluir" class="modal-backdrop" @click.self="documentoParaExcluir = null">
+        <section class="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="confirm-delete-title">
+          <p class="eyebrow">Confirmação necessária</p>
+          <h2 id="confirm-delete-title">Excluir documento?</h2>
+          <p>O arquivo <strong>{{ documentoParaExcluir.nomeOriginal }}</strong> e todos os seus links de compartilhamento serão removidos permanentemente.</p>
+          <div class="modal-actions">
+            <button type="button" class="cancel-button" :disabled="excluindo" @click="documentoParaExcluir = null">Cancelar</button>
+            <button type="button" class="delete-button" :disabled="excluindo" @click="confirmarExclusao">{{ excluindo ? 'Excluindo...' : 'Excluir documento' }}</button>
+          </div>
+        </section>
+      </div>
+    </Teleport>  </section>
 </template>
 
 <style scoped>
@@ -268,4 +304,14 @@ tbody tr:hover { background: #f8fafc; }
   padding: 8px 14px;
 }
 .pager button:disabled { opacity: .45; cursor: not-allowed; }
+
+.modal-backdrop { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; padding: 20px; background: rgba(15, 23, 42, .42); }
+.confirm-modal { width: min(100%, 440px); padding: 24px; border: 1px solid #e2e8f0; border-top: 3px solid #b91c1c; border-radius: 4px; background: #fff; box-shadow: 0 20px 44px rgba(15, 23, 42, .24); }
+.confirm-modal h2 { margin: 4px 0 10px; color: #0f172a; font-size: 1.25rem; }
+.confirm-modal p:not(.eyebrow) { margin: 0; color: #475569; font-size: .9rem; line-height: 1.55; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; }
+.cancel-button, .delete-button { border-radius: 4px; padding: 9px 14px; font: inherit; font-weight: 600; cursor: pointer; }
+.cancel-button { border: 1px solid #cbd5e1; background: #fff; color: #334155; }
+.delete-button { border: 1px solid #b91c1c; background: #b91c1c; color: #fff; }
+.cancel-button:disabled, .delete-button:disabled { opacity: .6; cursor: wait; }
 </style>
