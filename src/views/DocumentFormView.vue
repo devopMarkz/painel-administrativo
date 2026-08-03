@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'; import { useRouter } from 'vue-router'; import { documentosApi, tiposApi } from '../api/resources'; import { useAuthStore } from '../stores/auth'; import { errorMessage } from '../api/client'; import type { TipoImposto } from '../types'
+import templateRepasseIcms from '../assets/templates/template_repasse_icms.xlsx?url'
+import templateRepasseIpva from '../assets/templates/template_repasse_ipva.xlsx?url'
 const router = useRouter(); const auth = useAuthStore(); const tipos = ref<TipoImposto[]>([]); const arquivo = ref<File | null>(null); const idTipoImposto = ref(''); const municipio = ref(''); const periodoVigencia = ref(''); const error = ref(''); const loading = ref(false)
 const periodoValido = (valor: string) => /^(0[1-9]|1[0-2])-\d{4}$/.test(valor)
 function mascararPeriodo(event: Event) {
@@ -32,6 +34,17 @@ async function submit() { if (!arquivo.value || !auth.usuario) return error.valu
     <form class="card form" @submit.prevent="submit">
       <p v-if="error" class="alert error">{{ error }}</p>
 
+      <aside class="template-info" aria-labelledby="templates-title">
+        <div>
+          <p class="template-eyebrow">Modelos disponíveis</p>
+          <h2 id="templates-title">Use o template correspondente ao imposto</h2>
+          <p>Baixe o modelo antes de preencher a planilha. Isso garante que os repasses, municípios, categorias e totais sejam interpretados corretamente.</p>
+        </div>
+        <div class="template-actions">
+          <a :href="templateRepasseIcms" download="template_repasse_icms.xlsx">Baixar template ICMS</a>
+          <a :href="templateRepasseIpva" download="template_repasse_ipva.xlsx">Baixar template IPVA</a>
+        </div>
+      </aside>
       <label>Arquivo Excel (.xlsx)
         <input type="file" accept=".xlsx" required @change="arquivo = ($event.target as HTMLInputElement).files?.[0] || null" />
       </label>
@@ -98,8 +111,56 @@ h1 { margin: 0; font-size: 1.65rem; letter-spacing: -.02em; }
   box-shadow: 0 1px 2px rgba(15, 23, 42, .04);
 }
 .form { padding: 24px; display: flex; flex-direction: column; gap: 18px; }
+.template-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 16px;
+  border: 1px solid #bfdbfe;
+  border-left: 3px solid #1e4080;
+  border-radius: 4px;
+  background: #f8fbff;
+}
+.template-eyebrow {
+  margin: 0 0 4px;
+  color: #1e4080;
+  font-size: .68rem;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+.template-info h2 {
+  margin: 0;
+  color: #1e293b;
+  font-size: .98rem;
+}
+.template-info p:not(.template-eyebrow) {
+  margin: 5px 0 0;
+  color: #64748b;
+  font-size: .82rem;
+  line-height: 1.45;
+}
+.template-actions {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.template-actions a {
+  border: 1px solid #1e4080;
+  border-radius: 4px;
+  padding: 8px 10px;
+  color: #1e4080;
+  background: #fff;
+  font-size: .78rem;
+  font-weight: 650;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.template-actions a:hover { background: #eaf2ff; }
 .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
-@media (max-width: 640px) { .grid { grid-template-columns: 1fr; } }
+@media (max-width: 640px) { .grid { grid-template-columns: 1fr; } .template-info { align-items: flex-start; flex-direction: column; } }
 
 label {
   display: flex;
